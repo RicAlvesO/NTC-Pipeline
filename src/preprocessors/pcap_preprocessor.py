@@ -1,10 +1,12 @@
 import pyshark
 import pandas as pd
 from collections import OrderedDict
+from src.databases.mongo_connector import Database
 
 class PcapPreprocessor():
     # This class is used to preprocess the data
     def __init__(self):
+        self.db = Database()
         pass
 
     # This function is used to load the datasets
@@ -16,50 +18,34 @@ class PcapPreprocessor():
         # Open the PCAP file
         capture = pyshark.FileCapture(input_file)
         
-        all_fields = set()
-        packets_data = []
-    
-        # First pass: collect all possible fields
-        for packet_number, packet in enumerate(capture, start=1):
+        # convert the capture to a array of packets(dict) with proper data types instead of strings
+        packets = []
+        for packet in capture:
             fields = self.extract_fields(packet)
-            all_fields.update(fields.keys())
-            packets_data.append(fields)
-            
-            if packet_number % 1000 == 0:
-                print(f"Processed {packet_number} packets")
-    
-        # Sort the fields to ensure consistent column order
-        fieldnames = sorted(list(all_fields))
-    
-        # Create DataFrame with the packets data
-        df = pd.DataFrame([{field: packet_fields.get(field, '') for field in fieldnames} 
-                           for packet_fields in packets_data])
-    
-        print("Conversion complete.")
-        return df
-        
-
+            packets.append(fields)
+        return packets
     
     def extract_fields(self, packet):
-        """Extract all fields from a packet."""
-        fields = OrderedDict()
-
-        # Extract layer names
-        layer_names = [layer.layer_name for layer in packet.layers]
-        fields['layers'] = ':'.join(layer_names)
-
-        # Extract fields from each layer
+        # convert packet to json 
+        # correct the data types of the fields
+        packet_dict = {}
         for layer in packet.layers:
-            for field_name in layer.field_names:
+            packet_dict[layer.layer_name] = {}
+            for field in layer.field_names:
+                #correct the data types of the fields
                 try:
-                    field_value = getattr(layer, field_name)
-                    fields[f"{layer.layer_name}.{field_name}"] = field_value
-                except AttributeError:
-                    # Skip fields that can't be accessed
-                    pass
+                    packet_dict[layer.layer_name][field] = int(getattr(layer, field))
+                except:
+                    try:
+                        packet_dict[layer.layer_name][field] = float(getattr(layer, field))
+                    except:
+                        # verify bool
+                        if getattr(layer, field).lower() in ['true', 'false']:
+                            packet_dict[layer.layer_name][field] = getattr(layer, field).lower() == 'true'
+                        else:
+                            packet_dict[layer.layer_name][field] = getattr(layer, field)
+        return packet_dict
                 
-        return fields
-    
 
     def get_correct_column_type(self, base_data):
         for col in base_data.columns:
@@ -113,11 +99,12 @@ class PcapPreprocessor():
     # - Outliar detection
     # It should return a dataframe with the preprocessed data
     def preprocess_dataframe(self, data):
-        labeled_data = self.get_correct_column_type(data)
-        return labeled_data
+        self.db.add_data(data)
+        return True
 
     # This function is used to split the data into train, online and test
     # It should receive a dataframe and the percentages for each split
     # It should return three dataframes: train, online and test
     def split_dataframe(self, data, train_percentage, online_percentage, test_percentage):
-        raise NotImplementedError
+        df = self.db.get_data()
+        return df, df, df

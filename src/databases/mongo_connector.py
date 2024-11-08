@@ -25,5 +25,13 @@ class Database():
     def add_data(self, data):
         self.collection.insert_many(data)
 
+    def get_data(self, collumns=None):
+        # Get all data in a dataframe
+        data = self.collection.find()
+        df = pd.DataFrame(data)
+        if collumns:
+            df = df[collumns]
+        return df
+
     def get_training_data(self):
         raise NotImplementedError
