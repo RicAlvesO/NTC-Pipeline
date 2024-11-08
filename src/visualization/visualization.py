@@ -1,14 +1,19 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 
 class Visualization():
 
     # Function to check for null values in the dataset
-    def plot_missing_values_heatmap(self,base_data):
+    def plot_missing_values_heatmap(self, base_data):
+        # Convert placeholders to NaN if necessary
+        base_data.replace("", np.nan, inplace=True)
+        base_data.replace("null", np.nan, inplace=True)
+
         plt.figure(figsize=(10, 6))
-        sns.heatmap(base_data.isnull(), cbar=False, cmap='viridis')
+        sns.heatmap(base_data.isnull(), cbar=False, cmap='viridis', yticklabels=False)
         plt.title("Missing Values Heatmap")
         plt.show()
 
@@ -105,3 +110,14 @@ class Visualization():
         plt.ylabel("TCP Relative Time")
         plt.show()
 
+
+    def plot_distribution(self, base_data):
+        """Plot distribution for a numerical column."""
+
+        for column in base_data.select_dtypes(include=['float64', 'int64']).columns:
+            plt.figure(figsize=(10, 6))
+            sns.histplot(base_data[column].dropna(), kde=True)
+            plt.title(f'Distribution of {column}')
+            plt.xlabel(column)
+            plt.ylabel('Frequency')
+            plt.show()

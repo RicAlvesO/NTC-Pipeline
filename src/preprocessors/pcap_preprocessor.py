@@ -59,6 +59,31 @@ class PcapPreprocessor():
                     pass
                 
         return fields
+    
+
+    def get_correct_column_type(self, base_data):
+
+        # Loop over each column to determine its appropriate type
+        for col in base_data.columns:
+            # 1. Try converting to numeric
+            converted_column = pd.to_numeric(base_data[col], errors='coerce')
+
+            # If it's mostly numeric, keep it as such
+            if converted_column.notna().sum() / len(converted_column) > 0.9:
+                base_data[col] = converted_column
+                continue
+            
+            # 2. Try converting to datetime
+            converted_column = pd.to_datetime(base_data[col], errors='coerce')
+            if converted_column.notna().sum() / len(converted_column) > 0.9:
+                base_data[col] = converted_column
+                continue
+            
+            # 3. Convert to categorical if unique values are below a threshold (e.g., less than 50% unique values)
+            unique_ratio = base_data[col].nunique() / len(base_data[col])
+            if unique_ratio < 0.5:
+                base_data[col] = base_data[col].astype('category')
+            # Otherwise, leave it as an object if no specific type applies
 
 
     # This function is used to preprocess the data
