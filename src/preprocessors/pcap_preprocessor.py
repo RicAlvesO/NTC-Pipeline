@@ -14,16 +14,25 @@ class PcapPreprocessor():
     # - PCAP
     # It should return a dataframes with the data
     def load_datasets(self, datasets=[]):
-        input_file = datasets[0]
-        # Open the PCAP file
-        capture = pyshark.FileCapture(input_file)
-        
-        # convert the capture to a array of packets(dict) with proper data types instead of strings
-        packets = []
-        for packet in capture:
-            fields = self.extract_fields(packet)
-            packets.append(fields)
-        return packets
+        for data in datasets:
+            (dataset, label) = data
+            input_file = dataset
+            if label.lower() not in ['allow', 'deny', 'unknown']:
+                raise ValueError('The label must be either "allow", "deny" or "unknown"')
+            
+            # Open the PCAP file
+            capture = pyshark.FileCapture(input_file)
+
+            # convert the capture to a array of packets(dict) with proper data types instead of strings
+            packets = []
+            for packet in capture:
+                fields = self.extract_fields(packet)
+                fields['dataset'] = dataset
+                fields['label'] = label.lower()
+                packets.append(fields)
+                if len(packets)%1000==0:
+                    print(f'{len(packets)} packets processed')
+            return packets
     
     def extract_fields(self, packet):
         # convert packet to json 
@@ -105,6 +114,17 @@ class PcapPreprocessor():
     # This function is used to split the data into train, online and test
     # It should receive a dataframe and the percentages for each split
     # It should return three dataframes: train, online and test
-    def split_dataframe(self, data, train_percentage, online_percentage, test_percentage):
-        df = self.db.get_data()
-        return df, df, df
+    def get_all_data(self, cols=None, dataset=None):
+        df = self.db.get_data(collumns=cols,dataset=dataset)
+        return df
+
+    def get_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None):
+        base_train = self.db.get_data(to_percent=offp,collumns=cols)
+        if online:
+            base_online = self.db.get_data(from_percent=offp,to_percent=offp+onp,collumns=cols,dataset=dataset)
+            return base_train, base_online
+        return base_train
+
+    def get_validation_data(self,percentage=20,online=False,cols=None,dataset=None):
+        test = self.db.get_data(from_percent=100-percentage,collumns=cols,dataset=dataset)
+        return test

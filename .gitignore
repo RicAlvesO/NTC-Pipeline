@@ -2,3 +2,4 @@
 data/**/*.pcap
 src/**/__pycache__
 .env
+local
