@@ -32,6 +32,10 @@ class PcapPreprocessor():
                 packets.append(fields)
                 if len(packets)%1000==0:
                     print(f'{len(packets)} packets processed')
+                if len(packets) == 50000:
+                    self.preprocess_dataframe(packets)
+                    packets = []
+
             return packets
     
     def extract_fields(self, packet):
@@ -114,9 +118,14 @@ class PcapPreprocessor():
     # This function is used to split the data into train, online and test
     # It should receive a dataframe and the percentages for each split
     # It should return three dataframes: train, online and test
-    def get_all_data(self, cols=None, dataset=None):
-        df = self.db.get_data(collumns=cols,dataset=dataset)
+    def get_all_data(self, cols=None, dataset=None, sample_size=None):
+        # If sample_size is provided, get a random sample; otherwise, get all data
+        if sample_size is not None:
+            df = self.db.get_data_random(collumns=cols, dataset=dataset, sample_size=sample_size)
+        else:
+            df = self.db.get_data(collumns=cols, dataset=dataset)
         return df
+
 
     def get_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None):
         base_train = self.db.get_data(to_percent=offp,collumns=cols)

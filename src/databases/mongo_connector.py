@@ -48,3 +48,89 @@ class Database():
         if collumns:
             df = df[collumns]
         return df
+
+
+    def get_data_random(self, collumns=None, dataset=None, sample_size=None):
+
+        # Build the query based on the dataset if provided
+        query = {}
+        if dataset:
+            query['dataset'] = dataset
+
+        # Count total documents that match the query
+        total_count = self.collection.count_documents(query)
+
+        # If sample_size is provided, limit the number of documents retrieved
+        if sample_size is not None:
+            sample_size = min(sample_size, total_count)  # Ensure we don't exceed total count
+            pipeline = [
+                {"$match": query},
+                {"$sample": {"size": sample_size}}  # Use the $sample stage for random sampling
+            ]
+        else:
+            pipeline = [
+                {"$match": query}
+            ]
+
+        # Execute the aggregation pipeline
+        data = list(self.collection.aggregate(pipeline))
+
+        # Normalize the JSON into a flat DataFrame
+        data = pd.json_normalize(data)
+
+        # Create a DataFrame from the sampled data
+        df = pd.DataFrame(data)
+
+        # Filter columns if specified
+        if collumns:
+            df = df[collumns]
+
+        return df
+    
+
+    def count_by_dataset(self):
+        """Counts the number of documents by dataset."""
+
+        pipeline_dataset = [
+            {
+                "$group": {
+                    "_id": "$dataset",  # Group by the 'dataset' field
+                    "count": {"$sum": 1}  # Count the number of documents in each group
+                }
+            },
+            {
+                "$sort": {"count": -1}  # Sort by count in descending order
+            }
+        ]
+
+        # Execute the aggregation
+        dataset_counts = list(self.collection.aggregate(pipeline_dataset))
+
+        # Convert the result into a DataFrame
+        dataset_df = pd.DataFrame(dataset_counts)
+
+        return dataset_df
+
+
+    def count_by_label(self):
+        """Counts the number of documents by label."""
+
+        pipeline_label = [
+            {
+                "$group": {
+                    "_id": "$label",  # Group by the 'label' field
+                    "count": {"$sum": 1}  # Count the number of documents in each group
+                }
+            },
+            {
+                "$sort": {"count": -1}  # Sort by count in descending order
+            }
+        ]
+
+        # Execute the aggregation
+        label_counts = list(self.collection.aggregate(pipeline_label))
+
+        # Convert the result into a DataFrame
+        label_df = pd.DataFrame(label_counts)
+
+        return label_df
