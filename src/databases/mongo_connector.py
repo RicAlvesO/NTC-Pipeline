@@ -34,14 +34,18 @@ class Database():
     def add_data(self, data):
         self.collection.insert_many(data)
 
-    def get_data(self, collumns=None, from_percent=0, to_percent=100, dataset=None):
+    def get_data(self, collumns=None, from_percent=0, to_percent=100, dataset=None, labeled=True, seed=0):
         # Get all data in a dataframe
+        query = {}
         if dataset:
-            data = self.collection.find({"dataset": dataset})
-        else:
-            data = self.collection.find()
+            query['dataset'] = dataset
+        if labeled:
+            query['label'] = {"$in": ["allow","deny"]}
+        data = list(self.collection.find(query)) 
         # Sqaush the recursive json into a flat json
         data=pd.json_normalize(data)
+        # mix the according to the seed
+        data = data.sample(frac=1, random_state=seed).reset_index(drop=True)
         # Get the percentage of the data
         data = data.iloc[int(len(data)*from_percent/100):int(len(data)*to_percent/100)]
         df = pd.DataFrame(data)

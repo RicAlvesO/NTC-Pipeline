@@ -2,6 +2,7 @@ import pyshark
 import pandas as pd
 from collections import OrderedDict
 from src.databases.mongo_connector import Database
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class PcapPreprocessor():
     # This class is used to preprocess the data
@@ -13,30 +14,51 @@ class PcapPreprocessor():
     # It should allow to load the data from the formats bellow:
     # - PCAP
     # It should return a dataframes with the data
+
     def load_datasets(self, datasets=[]):
-        for data in datasets:
+        def process_dataset(data):
             (dataset, label) = data
             input_file = dataset
             if label.lower() not in ['allow', 'deny', 'unknown']:
                 raise ValueError('The label must be either "allow", "deny" or "unknown"')
-            
+
             # Open the PCAP file
             capture = pyshark.FileCapture(input_file)
 
-            # convert the capture to a array of packets(dict) with proper data types instead of strings
+            # Convert the capture to a list of packets(dict) with proper data types
             packets = []
             for packet in capture:
                 fields = self.extract_fields(packet)
                 fields['dataset'] = dataset
                 fields['label'] = label.lower()
                 packets.append(fields)
-                if len(packets)%1000==0:
-                    print(f'{len(packets)} packets processed')
-                if len(packets) == 50000:
-                    self.preprocess_dataframe(packets)
+                if len(packets) % 1000 == 0:
+                    print(f'{len(packets)} packets processed for {dataset}')
+                if len(packets) == 10000:
+                    self.db.add_data(packets)
                     packets = []
+                if len(packets) == 100000:
+                    break
+            # Add any remaining packets
+            if packets:
+                self.db.add_data(packets)
+            return f"{dataset} processing complete."
 
-            return packets
+        # Use ThreadPoolExecutor to process datasets in parallel
+        with ThreadPoolExecutor() as executor:
+            # Submit each dataset to the executor for parallel processing
+            futures = [executor.submit(process_dataset, data) for data in datasets]
+
+            # Collect results as each thread completes
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    print(result)
+                except Exception as e:
+                    print(f"Error processing dataset: {e}")
+
+        return True
+
     
     def extract_fields(self, packet):
         # convert packet to json 
@@ -111,8 +133,7 @@ class PcapPreprocessor():
     # - Data transformation
     # - Outliar detection
     # It should return a dataframe with the preprocessed data
-    def preprocess_dataframe(self, data):
-        self.db.add_data(data)
+    def preprocess_dataframe(self, data=None):
         return True
 
     # This function is used to split the data into train, online and test
@@ -127,13 +148,15 @@ class PcapPreprocessor():
         return df
 
 
-    def get_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None):
-        base_train = self.db.get_data(to_percent=offp,collumns=cols)
+    def get_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None, labeled=True, seed=0):
+        base_train = self.db.get_data(to_percent=offp,collumns=cols,seed=seed,dataset=dataset,labeled=labeled)
         if online:
-            base_online = self.db.get_data(from_percent=offp,to_percent=offp+onp,collumns=cols,dataset=dataset)
+            base_online = self.db.get_data(from_percent=offp,to_percent=offp+onp,collumns=cols,dataset=dataset,labeled=labeled,seed=seed)
             return base_train, base_online
         return base_train
 
-    def get_validation_data(self,percentage=20,online=False,cols=None,dataset=None):
-        test = self.db.get_data(from_percent=100-percentage,collumns=cols,dataset=dataset)
-        return test
+    def get_validation_data(self,percentage=20,online=False,cols=None,dataset=None,seed=0):
+        test = self.db.get_data(from_percent=100-percentage,collumns=cols,dataset=dataset,labeled=True,seed=seed)
+        labels = test['label']
+        test = test.drop(columns=['label'])
+        return test, labels
