@@ -19,8 +19,8 @@ class PcapPreprocessor():
         def process_dataset(data):
             (dataset, label) = data
             input_file = dataset
-            if label.lower() not in ['allow', 'deny', 'unknown']:
-                raise ValueError('The label must be either "allow", "deny" or "unknown"')
+            if label.lower() not in ['normal', 'anomaly', 'unknown']:
+                raise ValueError('The label must be either "allow", "anomaly" or "unknown"')
 
             # Open the PCAP file
             capture = pyshark.FileCapture(input_file)
@@ -139,14 +139,8 @@ class PcapPreprocessor():
     # This function is used to split the data into train, online and test
     # It should receive a dataframe and the percentages for each split
     # It should return three dataframes: train, online and test
-    def get_all_data(self, cols=None, dataset=None, sample_size=None):
-        # If sample_size is provided, get a random sample; otherwise, get all data
-        if sample_size is not None:
-            df = self.db.get_data_random(collumns=cols, dataset=dataset, sample_size=sample_size)
-        else:
-            df = self.db.get_data(collumns=cols, dataset=dataset)
-        return df
-
+    def get_all_data(self, cols=None, dataset=None, sample_size=None, seed=0):
+        return self.db.get_data(collumns=cols, dataset=dataset, sample_size=sample_size, seed=seed)
 
     def get_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None, labeled=True, seed=0):
         base_train = self.db.get_data(to_percent=offp,collumns=cols,seed=seed,dataset=dataset,labeled=labeled)
@@ -156,7 +150,4 @@ class PcapPreprocessor():
         return base_train
 
     def get_validation_data(self,percentage=20,online=False,cols=None,dataset=None,seed=0):
-        test = self.db.get_data(from_percent=100-percentage,collumns=cols,dataset=dataset,labeled=True,seed=seed)
-        labels = test['label']
-        test = test.drop(columns=['label'])
-        return test, labels
+        return self.db.get_data(from_percent=100-percentage,collumns=cols,dataset=dataset,labeled=True,seed=seed)

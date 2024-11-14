@@ -1,5 +1,6 @@
-import pymongo
 import os
+import random
+import pymongo
 import pandas as pd
 from dotenv import load_dotenv
 
@@ -34,24 +35,42 @@ class Database():
     def add_data(self, data):
         self.collection.insert_many(data)
 
-    def get_data(self, collumns=None, from_percent=0, to_percent=100, dataset=None, labeled=True, seed=0):
-        # Get all data in a dataframe
+    def get_data(self, collumns=None, from_percent=0, to_percent=100, dataset=None, labeled=True, seed=0, sample_size=None):
+        # Build the MongoDB query with the specified conditions
         query = {}
         if dataset:
             query['dataset'] = dataset
         if labeled:
-            query['label'] = {"$in": ["allow","deny"]}
-        data = list(self.collection.find(query)) 
-        # Sqaush the recursive json into a flat json
-        data=pd.json_normalize(data)
-        # mix the according to the seed
-        data = data.sample(frac=1, random_state=seed).reset_index(drop=True)
-        # Get the percentage of the data
-        data = data.iloc[int(len(data)*from_percent/100):int(len(data)*to_percent/100)]
-        df = pd.DataFrame(data)
+            query['label'] = {"$in": ["allow", "deny"]}
+
+        # Get total document count based on the query
+        total_docs = self.collection.count_documents(query)
+        skip = int(total_docs * from_percent / 100)
+        if sample_size:
+            limit = skip+sample_size
+        else:
+            limit = int(total_docs * (to_percent - from_percent) / 100)
+
+        # Retrieve the IDs of documents matching the query
+        doc_ids = self.collection.find(query, {"_id": 1})
+        doc_ids = [doc["_id"] for doc in doc_ids]
+
+        # Use the seed to shuffle the document IDs and take a subset
+        random.seed(seed)
+        random.shuffle(doc_ids)
+        selected_ids = doc_ids[skip: skip + limit]
+
+        # Retrieve only the documents with the selected IDs
+        data = list(self.collection.find({"_id": {"$in": selected_ids}}))
+
+        # Flatten the data using pandas
+        data = pd.json_normalize(data)
+
+        # Select specified columns if provided
         if collumns:
-            df = df[collumns]
-        return df
+            data = data[collumns]
+
+        return data.reset_index(drop=True)
 
 
     def get_data_random(self, collumns=None, dataset=None, sample_size=None):
