@@ -165,7 +165,18 @@ class Visualization():
     
 
     def column_info(self, base_data):
-        return display(HTML(base_data.dtypes.to_frame().to_html(header=["Data Type"], index=True)))
+
+        # Sort the columns alphabetically
+        sorted_columns = sorted(base_data.columns)
+
+        # Create a DataFrame with sorted columns and their data types
+        sorted_dtypes = base_data[sorted_columns].dtypes.to_frame()
+
+        # Rename the DataFrame's columns for clarity
+        sorted_dtypes.columns = ["Data Type"]
+
+        # Display the sorted DataFrame as HTML
+        return display(HTML(sorted_dtypes.to_html(index=True)))
     
 
     def first_x_rows(self, base_data, x):
@@ -200,11 +211,57 @@ class Visualization():
         label_counts = label_df['label'].value_counts().reset_index()
         label_counts.columns = ['Label', 'Count']
 
-        plt.figure(figsize=(12, 6))
-        plt.bar(label_counts['Label'], label_counts['Count'], color='salmon')
+        # plt.figure(figsize=(12, 6))
+        # plt.bar(label_counts['Label'], label_counts['Count'], color='salmon')
+        # plt.title('Count of Documents by Label')
+        # plt.xlabel('Label')
+        # plt.ylabel('Count')
+        # plt.xticks(rotation=45)
+        # plt.tight_layout()
+        # plt.show()
+
+        plt.figure(figsize=(4, 4)) 
+        plt.pie(label_counts['Count'], labels=label_counts['Label'], autopct='%1.1f%%', startangle=140, colors=plt.cm.Paired.colors)
         plt.title('Count of Documents by Label')
-        plt.xlabel('Label')
-        plt.ylabel('Count')
-        plt.xticks(rotation=45)
+        plt.axis('equal')
         plt.tight_layout()
         plt.show()
+    
+
+    def find_common_columns_from_datasets(self, df):
+        """
+        Finds common columns across different datasets in a DataFrame,
+        excluding columns that are completely empty in each dataset.
+
+        Parameters:
+        df (pd.DataFrame): The DataFrame containing the data with a 'dataset' column.
+
+        Returns:
+        list: A list of common column names across all datasets.
+        """
+        # Get unique datasets
+        unique_datasets = df['dataset'].unique()
+
+        # Initialize a dictionary to hold the DataFrames for each dataset
+        dataset_dfs = {dataset: df[df['dataset'] == dataset].drop(columns=['dataset']) for dataset in unique_datasets}
+
+        # Initialize a set to hold the common columns
+        common_columns = None
+
+        # Iterate through each dataset DataFrame
+        for dataset, dataset_df in dataset_dfs.items():
+            # Identify columns that are completely empty
+            empty_columns = dataset_df.columns[dataset_df.isnull().all()].tolist()
+
+            # Drop empty columns from the current dataset DataFrame
+            dataset_df = dataset_df.drop(columns=empty_columns)
+
+            # Update common columns
+            if common_columns is None:
+                common_columns = set(dataset_df.columns)
+            else:
+                common_columns.intersection_update(dataset_df.columns)
+
+        # Convert the set to a list for easier reading
+        return list(common_columns)
+
