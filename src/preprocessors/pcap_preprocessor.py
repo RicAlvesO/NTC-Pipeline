@@ -14,7 +14,6 @@ class PcapPreprocessor():
     # It should allow to load the data from the formats bellow:
     # - PCAP
     # It should return a dataframes with the data
-
     def load_datasets(self, datasets=[]):
         def process_dataset(data):
             print(f"Processing dataset: {data}")
@@ -26,22 +25,23 @@ class PcapPreprocessor():
             # Open the PCAP file
             capture = pyshark.FileCapture(input_file)
 
-            count=0
-
             # Convert the capture to a list of packets(dict) with proper data types
             packets = []
-            for packet in capture:
+            for i,packet in enumerate(capture,start=1):
                 fields = self.extract_fields(packet)
                 fields['dataset'] = dataset
                 fields['label'] = label.lower()
+                fields['timestamp'] = float(packet.sniff_timestamp)
+                fields['size'] = packet.length
+                # add the frame info
+                fields['frame_number']= packet.frame_info.number
                 packets.append(fields)
-                if len(packets) % 1000 == 0:
-                    print(f'{len(packets)} packets processed for {dataset}')
+                if i % 1000 == 0:
+                    print(f'{i} packets processed for {dataset}')
                     self.db.add_data(packets)
                     packets = []
-                    count+=1
-                if count == 50:
-                    break
+                    if (i == 50000 and label=="normal") or (i == 10000 and label=="anomaly"):
+                        break
             # Add any remaining packets
             if packets:
                 self.db.add_data(packets)
@@ -62,7 +62,7 @@ class PcapPreprocessor():
 
         return True
 
-    
+    # This function is used to extract the fields from the packet
     def extract_fields(self, packet):
         # convert packet to json 
         # correct the data types of the fields
@@ -85,52 +85,13 @@ class PcapPreprocessor():
         return packet_dict
                 
 
-    def get_correct_column_type(self, base_data):
-        for col in base_data.columns:
-            
-            try:
-                converted_column = pd.to_numeric(base_data[col], errors='coerce')
-                if converted_column.notna().sum() / len(converted_column) > 0.9:
-                    base_data[col] = converted_column
-                    continue
-            except:
-                pass
-            
-            try:
-                converted_column = pd.to_datetime(base_data[col], errors='coerce')
-                if converted_column.notna().sum() / len(converted_column) > 0.9:
-                    base_data[col] = converted_column
-                    continue
-            except:
-                pass
-
-            try:
-                values = base_data[col].unique()
-                bool_values = [value for value in values if value.lower() in ['true', 'false']]
-                if len(bool_values) / len(values) > 0.9:
-                    base_data[col] = base_data[col].apply(lambda x: x.lower() == 'true')
-                    continue
-            except:
-                pass
-
-            try:
-                unique_ratio = base_data[col].nunique() / len(base_data[col])
-                if unique_ratio < 0.2:
-                    base_data[col] = base_data[col].astype('category')
-                    continue
-            except:
-                pass
-
-            base_data[col] = base_data[col].astype('str')
-
-        return base_data
-
     # This function is used to split the data into train, online and test
     # It should receive a dataframe and the percentages for each split
     # It should return three dataframes: train, online and test
     def get_all_data(self, cols=None, dataset=None, sample_size=None, seed=0):
         return self.db.get_data(collumns=cols, dataset=dataset, sample_size=sample_size, seed=seed)
 
+    # This function is used to split the data into offline & online training
     def get_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None, labeled=True, seed=0):
         base_train = self.db.get_data(to_percent=offp,collumns=cols,seed=seed,dataset=dataset,labeled=labeled)
         if online:
@@ -138,5 +99,8 @@ class PcapPreprocessor():
             return base_train, base_online
         return base_train
 
+    # This function is used to split the data into validation
     def get_validation_data(self,percentage=20,online=False,cols=None,dataset=None,seed=0):
         return self.db.get_data(from_percent=100-percentage,collumns=cols,dataset=dataset,labeled=True,seed=seed)
+
+    
