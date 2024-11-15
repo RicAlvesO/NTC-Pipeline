@@ -41,7 +41,7 @@ class Database():
         if dataset:
             query['dataset'] = dataset
         if labeled:
-            query['label'] = {"$in": ["allow", "deny"]}
+            query['label'] = {"$in": ["normal", "anomaly"]}
 
         # Get total document count based on the query
         total_docs = self.collection.count_documents(query)

@@ -17,6 +17,7 @@ class PcapPreprocessor():
 
     def load_datasets(self, datasets=[]):
         def process_dataset(data):
+            print(f"Processing dataset: {data}")
             (dataset, label) = data
             input_file = dataset
             if label.lower() not in ['normal', 'anomaly', 'unknown']:
@@ -24,6 +25,8 @@ class PcapPreprocessor():
 
             # Open the PCAP file
             capture = pyshark.FileCapture(input_file)
+
+            count=0
 
             # Convert the capture to a list of packets(dict) with proper data types
             packets = []
@@ -34,10 +37,10 @@ class PcapPreprocessor():
                 packets.append(fields)
                 if len(packets) % 1000 == 0:
                     print(f'{len(packets)} packets processed for {dataset}')
-                if len(packets) == 10000:
                     self.db.add_data(packets)
                     packets = []
-                if len(packets) == 100000:
+                    count+=1
+                if count == 50:
                     break
             # Add any remaining packets
             if packets:
@@ -121,20 +124,6 @@ class PcapPreprocessor():
             base_data[col] = base_data[col].astype('str')
 
         return base_data
-
-
-    # This function is used to preprocess the data
-    # It receives a dataframe and should return the preprocessed dataframe
-    # This function should include the steps such as:
-    # - Feature selection
-    # - Feature engineering
-    # - Data cleaning
-    # - Data normalization
-    # - Data transformation
-    # - Outliar detection
-    # It should return a dataframe with the preprocessed data
-    def preprocess_dataframe(self, data=None):
-        return True
 
     # This function is used to split the data into train, online and test
     # It should receive a dataframe and the percentages for each split
