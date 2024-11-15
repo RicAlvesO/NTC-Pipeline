@@ -152,17 +152,62 @@ class Visualization():
 
         # Display the list and table
         print("Columns with 0% Missing Values:", zero_missing_list)
-        print("Columns with >85% Missing Values:", high_missing_list)
+        print(f"Columns with >{threshold} Missing Values:", high_missing_list)
 
         # Display the table with columns that have missing values less than 85% (excluding 0% missing)
         html_table = valid_columns_df.to_html(index=False, escape=False)
-        display(HTML(f"<h3>Columns with <85% Missing Values (excluding 0%)</h3>{html_table}"))
+        display(HTML(f"<h3>Columns with <{threshold}% Missing Values (excluding 0%)</h3>{html_table}"))
 
         # Return the cleaned DataFrame with only valid columns
         base_data_cleaned = base_data[valid_columns.index]
 
         return base_data_cleaned
     
+
+    def calculate_missing_percentages(self, base_data):
+        return base_data.isnull().mean()
+    
+
+    def print_zero_missing_columns(self, missing_percentage):
+        zero_missing = missing_percentage[missing_percentage == 0].index.tolist()
+        print("Columns with 0% Missing Values:", zero_missing)
+
+
+    def print_high_missing_columns(self, missing_percentage, threshold):
+        high_missing = missing_percentage[missing_percentage > threshold].index.tolist()
+        print(f"Columns with >{threshold * 100}% Missing Values:", high_missing)
+
+
+    def print_valid_columns_table(self, missing_percentage, threshold):
+        valid_greater_than_zero_columns = missing_percentage[(missing_percentage < threshold) & (missing_percentage > 0)]
+        valid_columns_df = pd.DataFrame({
+            'Column': valid_greater_than_zero_columns.index,
+            'Missing Percentage': valid_greater_than_zero_columns.values * 100  # Convert to percentage
+        })
+        html_table = valid_columns_df.to_html(index=False, escape=False)
+        display(HTML(f"<h3>Columns with <{threshold * 100}% Missing Values (excluding 0%)</h3>{html_table}"))
+
+    
+    def filter_valid_columns(self, base_data, missing_percentage, threshold):
+        valid_columns = missing_percentage[missing_percentage < threshold].index
+        return base_data[valid_columns]
+    
+
+    def get_types(self, base_data):
+        missing_percentage = self.calculate_missing_percentages(base_data)
+        filtered_columns = [col for col in base_data.columns if col.endswith('.') and col.count('.') == 1]
+        filtered_missing_percentage = missing_percentage[filtered_columns]
+        available_data_percentage = (1 - filtered_missing_percentage) * 100
+
+        plt.figure(figsize=(10, 6))
+        available_data_percentage.sort_values().plot(kind='bar', color='skyblue')
+        plt.title('Percentage of Available Data', fontsize=16)
+        plt.xlabel('Columns', fontsize=12)
+        plt.ylabel('Available Data (%)', fontsize=12)
+        plt.xticks(rotation=45, ha='right')
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.tight_layout()
+        plt.show()
 
     def column_info(self, base_data):
 

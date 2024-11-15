@@ -104,3 +104,20 @@ class PcapPreprocessor():
         return self.db.get_data(from_percent=100-percentage,collumns=cols,dataset=dataset,labeled=True,seed=seed)
 
     
+
+    def get_database_information(self):
+        # Get dataset counts
+        dataset_counts_df = self.db.count_by_dataset()
+        dataset_counts = dataset_counts_df.to_dict(orient="records")
+
+        # Get label counts
+        label_counts_df = self.db.count_by_label()
+        label_counts = label_counts_df.to_dict(orient="records")
+
+        # Combine the results into a dictionary
+        result = {
+            "datasets": dataset_counts,
+            "labels": label_counts
+        }
+
+        return result
