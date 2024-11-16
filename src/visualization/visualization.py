@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from IPython.display import display, HTML
-
+from matplotlib_venn import venn3
 
 class Visualization():
 
@@ -16,26 +16,6 @@ class Visualization():
         plt.figure(figsize=(10, 6))
         sns.heatmap(base_data.isnull(), cbar=False, cmap='viridis', yticklabels=False)
         plt.title("Missing Values Heatmap")
-        plt.show()
-
-    # Function to plot distribution of TCP source port counts
-    def plot_tcp_source_ports(self,base_data):
-        plt.figure(figsize=(14, 6))
-        base_data['tcp.srcport'].value_counts().head(20).plot(kind='bar', color='skyblue')
-        plt.title("Top 20 Source TCP Ports")
-        plt.xlabel("TCP Source Port")
-        plt.ylabel("Count")
-        plt.xticks(rotation=45)
-        plt.show()
-
-    # Function to plot distribution of UDP source port counts
-    def plot_udp_source_ports(self,base_data):
-        plt.figure(figsize=(14, 6))
-        base_data['udp.srcport'].value_counts().head(20).plot(kind='bar', color='salmon')
-        plt.title("Top 20 Source UDP Ports")
-        plt.xlabel("UDP Source Port")
-        plt.ylabel("Count")
-        plt.xticks(rotation=45)
         plt.show()
 
     # Function to plot the top 20 source IP addresses
@@ -54,6 +34,26 @@ class Visualization():
         base_data['ip.dst'].value_counts().head(20).plot(kind='bar', color='lightgreen')
         plt.title("Top 20 Destination IP Addresses")
         plt.xlabel("Destination IP")
+        plt.ylabel("Count")
+        plt.xticks(rotation=45)
+        plt.show()
+
+    # Function to plot distribution of TCP source port counts
+    def plot_tcp_source_ports(self,base_data):
+        plt.figure(figsize=(14, 6))
+        base_data['tcp.srcport'].value_counts().head(20).plot(kind='bar', color='skyblue')
+        plt.title("Top 20 Source TCP Ports")
+        plt.xlabel("TCP Source Port")
+        plt.ylabel("Count")
+        plt.xticks(rotation=45)
+        plt.show()
+
+    # Function to plot distribution of UDP source port counts
+    def plot_udp_source_ports(self,base_data):
+        plt.figure(figsize=(14, 6))
+        base_data['udp.srcport'].value_counts().head(20).plot(kind='bar', color='salmon')
+        plt.title("Top 20 Source UDP Ports")
+        plt.xlabel("UDP Source Port")
         plt.ylabel("Count")
         plt.xticks(rotation=45)
         plt.show()
@@ -77,6 +77,8 @@ class Visualization():
         plt.ylabel("Count")
         plt.xticks(rotation=45)
         plt.show()
+
+    
 
     # Function to plot correlation matrix for numeric columns
     def plot_correlation_matrix(self, base_data, corr_threshold=0.5):
@@ -195,7 +197,8 @@ class Visualization():
 
     def get_types(self, base_data):
         missing_percentage = self.calculate_missing_percentages(base_data)
-        filtered_columns = [col for col in base_data.columns if col.endswith('.') and col.count('.') == 1]
+        # filtered_columns = [col for col in base_data.columns if col.endswith('.') and col.count('.') == 1]
+        filtered_columns = [col for col in base_data.columns if col.startswith('layer_') and col.count('.') == 1]
         filtered_missing_percentage = missing_percentage[filtered_columns]
         available_data_percentage = (1 - filtered_missing_percentage) * 100
 
@@ -310,3 +313,45 @@ class Visualization():
         # Convert the set to a list for easier reading
         return list(common_columns)
 
+    def check_udp_port_columns(self, base_data):
+        # Filter rows where 'udp.port' is not null
+        non_null_udp_port = base_data[['udp.port', 'udp.srcport', 'udp.dstport']].dropna(subset=['udp.port'])
+        
+        # Add comparison columns to check if 'udp.port' matches 'udp.srcport' or 'udp.dstport'
+        non_null_udp_port['matches_srcport'] = non_null_udp_port['udp.port'] == non_null_udp_port['udp.srcport']
+        non_null_udp_port['matches_dstport'] = non_null_udp_port['udp.port'] == non_null_udp_port['udp.dstport']
+        
+        # check if there are any rows where 'udp.port' does not match 'udp.srcport' or 'udp.dstport'
+        print("Rows where 'udp.port' does not match 'udp.srcport' or 'udp.dstport':")
+        if (non_null_udp_port[(non_null_udp_port['matches_srcport'] == False) & (non_null_udp_port['matches_dstport'] == False)]).empty:
+            print("No rows found")
+        else:
+            return(non_null_udp_port[(non_null_udp_port['matches_srcport'] == False) & (non_null_udp_port['matches_dstport'] == False)])
+
+
+    def check_tcp_port_columns(self, base_data):
+        # Filter rows where 'tcp.port' is not null
+        non_null_tcp_port = base_data[['tcp.port', 'tcp.srcport', 'tcp.dstport']].dropna(subset=['tcp.port'])
+        
+        # Add comparison columns to check if 'tcp.port' matches 'tcp.srcport' or 'tcp.dstport'
+        non_null_tcp_port['matches_srcport'] = non_null_tcp_port['tcp.port'] == non_null_tcp_port['tcp.srcport']
+        non_null_tcp_port['matches_dstport'] = non_null_tcp_port['tcp.port'] == non_null_tcp_port['tcp.dstport']
+        
+        # check if there are any rows where 'tcp.port' does not match 'tcp.srcport' or 'tcp.dstport'
+        print("Rows where 'tcp.port' does not match 'tcp.srcport' or 'tcp.dstport':")
+        if (non_null_tcp_port[(non_null_tcp_port['matches_srcport'] == False) & (non_null_tcp_port['matches_dstport'] == False)]).empty:
+            print("No rows found")
+        else:
+            return(non_null_tcp_port[(non_null_tcp_port['matches_srcport'] == False) & (non_null_tcp_port['matches_dstport'] == False)])
+    
+
+    def plot_size_distribution(self, base_data):
+        # Ensure that 'size' column is not null and is numeric
+        non_null_size = base_data['size'].dropna()  # Remove NaN values
+
+        plt.figure(figsize=(10, 6))
+        sns.histplot(non_null_size, kde=True, bins=30, color='skyblue', edgecolor='black')
+        plt.title('Distribution of Size', fontsize=16)
+        plt.xlabel('Size', fontsize=14)
+        plt.ylabel('Frequency', fontsize=14)
+        plt.show()
