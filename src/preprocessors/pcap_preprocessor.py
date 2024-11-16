@@ -68,6 +68,8 @@ class PcapPreprocessor():
         # correct the data types of the fields
         packet_dict = {}
         for layer in packet.layers:
+            ln=f"layer_{layer._layer_name}"
+            packet_dict[ln] = True  
             packet_dict[layer.layer_name] = {}
             for field in layer.field_names:
                 #correct the data types of the fields
