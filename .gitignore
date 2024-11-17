@@ -1,5 +1,7 @@
 .venv
 data/**/*.pcap
+data/**/*.pkl
+data/**/*.csv
 src/**/__pycache__
 .env
 local

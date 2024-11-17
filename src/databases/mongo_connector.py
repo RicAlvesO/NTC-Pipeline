@@ -17,9 +17,6 @@ class Database():
         self.collection_name = os.getenv("MONGO_COLLECTION")
         self.connect()
 
-    def __del__(self):
-        self.disconnect()
-
     # This function is used to connect to the database
     def connect(self):
         self.client = pymongo.MongoClient(f"mongodb://{self.username}:{self.password}@{self.host}:{self.port}/")
@@ -35,7 +32,7 @@ class Database():
     def add_data(self, data):
         self.collection.insert_many(data)
 
-    def get_data(self, collumns=None, from_percent=0, to_percent=100, dataset=None, labeled=True, seed=0, sample_size=None):
+    def get_data(self, collumns=None, from_percent=0, to_percent=100, dataset=None, labeled=True, seed=0, page_size=None, page_number=None):
         # Build the MongoDB query with the specified conditions
         query = {}
         if dataset:
@@ -46,10 +43,16 @@ class Database():
         # Get total document count based on the query
         total_docs = self.collection.count_documents(query)
         skip = int(total_docs * from_percent / 100)
-        if sample_size:
-            limit = skip+sample_size
-        else:
-            limit = int(total_docs * (to_percent - from_percent) / 100)
+        limit = int(total_docs * (to_percent - from_percent) / 100)
+        if page_size!=None and page_number!=None:
+            page_start = page_size * page_number
+            page_end = page_size * (page_number + 1)
+            if page_start > limit:
+                return None
+            if page_end > limit:
+                page_end = limit
+            skip += page_start
+            limit = page_end - page_start
 
         # Retrieve the IDs of documents matching the query
         doc_ids = self.collection.find(query, {"_id": 1})

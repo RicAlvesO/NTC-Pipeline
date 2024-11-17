@@ -1,16 +1,21 @@
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
+import pandas as pd
+import pickle
+import time
+import os
 
 class Offline_RandomForest():
     def __init__(self):
         self.online = False
-        self.id = "Offline1"
+        self.name = "Offline1"
+        self.id = f"Offline1_{int(time.time())}"
         self.model = RandomForestClassifier(random_state=42)
         self.scaler = StandardScaler()
         self.label_encoder = LabelEncoder()
+        self.initialized = False
         
     def is_online(self):
         return self.online
@@ -21,7 +26,7 @@ class Offline_RandomForest():
         features = [
             "ip.len", "ip.ttl", "tcp.srcport", "tcp.dstport", "udp.srcport", "udp.dstport",
             "tcp.len", "udp.length", "tcp.flags_syn", "tcp.flags_ack", "tcp.flags_fin",
-            "timestamp", "size", "frame_number"
+            "size", "frame_number"
         ]
         # Check if the required features exist in the data
         available_features = [f for f in features if f in data.columns]
@@ -45,16 +50,10 @@ class Offline_RandomForest():
     def train(self, data):
         try:
             X, y = self.prepare_data(data, training=True)
-            X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
             
             # Train the model
-            self.model.fit(X_train, y_train)
-            
-            # Evaluate on validation data
-            y_pred = self.model.predict(X_val)
-            print("Validation Results:")
-            print(classification_report(y_val, y_pred, target_names=self.label_encoder.classes_))
-            
+            self.model.fit(X, y)
+
             return True
         except Exception as e:
             print(f"Training failed: {e}")
@@ -79,9 +78,32 @@ class Offline_RandomForest():
             raise ValueError("The model is not trained.")
 
         # Scale the single data point
-        data = pd.DataFrame([data])  # Convert single data point to DataFrame
-        feature_data, _ = self.prepare_data(data, training=False)
+        if isinstance(data, pd.DataFrame):
+            input_data = data
+        else:
+            input_data = pd.DataFrame(data) if data.ndim == 2 else pd.DataFrame([data])
+        feature_data, _ = self.prepare_data(input_data, training=False)
         prediction = self.model.predict(feature_data)
         
         # Map prediction to original label
         return self.label_encoder.inverse_transform(prediction)[0]
+
+    def save_model(self, path):
+        fpath = f"{path}/{self.name}"
+        mpath = f"{fpath}/{self.id}.pkl"
+        # Create the directory if it does not exist
+        if not os.path.exists(fpath):
+            os.makedirs(fpath)
+        # Save the model, scaler, and label encoder to a pickle file
+        pick={'model':self.model,'scaler':self.scaler,'label_encoder':self.label_encoder}
+        with open(mpath, 'wb') as f:
+            pickle.dump(pick, f)
+
+    def load_model(self, path):
+        # Load the model, scaler, and label encoder from a pickle file
+        with open(path, 'rb') as f:
+            pick = pickle.load(f)
+            self.model = pick['model']
+            self.scaler = pick['scaler']
+            self.label_encoder = pick['label_encoder']
+            self.initialized = True

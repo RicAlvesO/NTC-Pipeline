@@ -91,21 +91,33 @@ class PcapPreprocessor():
     # It should receive a dataframe and the percentages for each split
     # It should return three dataframes: train, online and test
     def get_all_data(self, cols=None, dataset=None, sample_size=None, seed=0):
-        return self.db.get_data(collumns=cols, dataset=dataset, sample_size=sample_size, seed=seed)
+        return self.db.get_data(collumns=cols, dataset=dataset, seed=seed)
 
     # This function is used to split the data into offline & online training
-    def get_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None, labeled=True, seed=0):
-        base_train = self.db.get_data(to_percent=offp,collumns=cols,seed=seed,dataset=dataset,labeled=labeled)
+    def get_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None, labeled=True, seed=0, page_size=None, page_number=None):
+        if page_size and not page_number or page_number and not page_size:
+            raise ValueError("Both page_size and page_number must be provided.")
+        base_train = self.db.get_data(to_percent=offp,collumns=cols,seed=seed,dataset=dataset,labeled=labeled,page_size=page_size,page_number=page_number)
         if online:
-            base_online = self.db.get_data(from_percent=offp,to_percent=offp+onp,collumns=cols,dataset=dataset,labeled=labeled,seed=seed)
+            base_online = self.db.get_data(from_percent=offp,to_percent=offp+onp,collumns=cols,dataset=dataset,labeled=labeled,seed=seed, page_size=page_size, page_number=page_number)
             return base_train, base_online
         return base_train
 
-    # This function is used to split the data into validation
-    def get_validation_data(self,percentage=20,online=False,cols=None,dataset=None,seed=0):
-        return self.db.get_data(from_percent=100-percentage,collumns=cols,dataset=dataset,labeled=True,seed=seed)
+    def get_offline_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None, labeled=True, seed=0, page_size=None, page_number=None):
+        if page_size and page_number==None or page_number and page_size==None:
+            raise ValueError("Both page_size and page_number must be provided.")
+        return self.db.get_data(to_percent=offp,collumns=cols,seed=seed,dataset=dataset,labeled=labeled,page_size=page_size,page_number=page_number)
+        
+    def get_online_training_data(self,offp=60,onp=20,online=False,cols=None,dataset=None, labeled=True, seed=0, page_size=None, page_number=None):
+        if page_size and page_number==None or page_number and page_size==None:
+            raise ValueError("Both page_size and page_number must be provided.")
+        return self.db.get_data(from_percent=offp,to_percent=offp+onp,collumns=cols,dataset=dataset,labeled=labeled,seed=seed, page_size=page_size, page_number=page_number)
 
-    
+    # This function is used to split the data into validation
+    def get_validation_data(self,percentage=20,online=False,cols=None,dataset=None,seed=0, page_size=None, page_number=None):
+        if page_size and page_number==None or page_number and page_size==None:
+            raise ValueError("Both page_size and page_number must be provided.")
+        return self.db.get_data(from_percent=100-percentage,to_percent=100,collumns=cols,dataset=dataset,labeled=True,seed=seed, page_size=page_size, page_number=page_number)
 
     def get_database_information(self):
         # Get dataset counts

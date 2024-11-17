@@ -8,10 +8,10 @@ from src.preprocessors.pcap_preprocessor import PcapPreprocessor
 
 dataset_files = []
 
-for file in os.listdir('data/normal'):
-    dataset_files.append(('data/normal/' + file, 'normal'))
-for file in os.listdir('data/anomaly'):
-    dataset_files.append(('data/anomaly/' + file, 'anomaly'))
+for file in os.listdir('data/pcap/normal'):
+    dataset_files.append(('data/pcap/normal/' + file, 'normal'))
+for file in os.listdir('data/pcap/anomaly'):
+    dataset_files.append(('data/pcap/anomaly/' + file, 'anomaly'))
 
 preprocessor = PcapPreprocessor()
 if len(dataset_files) > 0:

@@ -13,6 +13,6 @@ class Evaluator():
         # the rest are all the models
         results = []
         for col in data.columns[1:]:
-            accuracy = (data[col] == data[data.columns[0]]).mean()
-            results.append(accuracy)
-        return pd.DataFrame(results, index=data.columns[1:], columns=["accuracy"])
+            accuracy = (data[col][1:] == data[data.columns[0]][1:]).mean()
+            results.append([data[col][0], accuracy])
+        return pd.DataFrame(results, columns=["model","accuracy"])

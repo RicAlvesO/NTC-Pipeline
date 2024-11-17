@@ -1,13 +1,17 @@
-import pandas as pd
-from sklearn.linear_model import SGDClassifier
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import classification_report
+from sklearn.linear_model import SGDClassifier
+import pandas as pd
 import numpy as np
+import pickle
+import time
+import os
 
 class Online_RandomForest():
     def __init__(self):
         self.online = True  # Indicates the model can train online
-        self.id = "Online1"
+        self.name = "Online1"
+        self.id = f"Online1_{int(time.time())}"
         self.model = SGDClassifier(random_state=42, loss="log_loss")  # Supports partial_fit
         self.scaler = StandardScaler()
         self.label_encoder = LabelEncoder()
@@ -22,7 +26,7 @@ class Online_RandomForest():
         features = [
             "ip.len", "ip.ttl", "tcp.srcport", "tcp.dstport", "udp.srcport", "udp.dstport",
             "tcp.len", "udp.length", "tcp.flags_syn", "tcp.flags_ack", "tcp.flags_fin",
-            "timestamp", "size", "frame_number"
+            "size", "frame_number"
         ]
         # Check if the required features exist in the data
         available_features = [f for f in features if f in data.columns]
@@ -87,8 +91,11 @@ class Online_RandomForest():
             raise ValueError("The model is not trained.")
 
         # Scale the single data point
-        data = pd.DataFrame([data])  # Convert single data point to DataFrame
-        feature_data, _ = self.prepare_data(data, training=False)
+        if isinstance(data, pd.DataFrame):
+            input_data = data
+        else:
+            input_data = pd.DataFrame(data) if data.ndim == 2 else pd.DataFrame([data])
+        feature_data, _ = self.prepare_data(input_data, training=False)
         prediction = self.model.predict(feature_data)
         
         # Map prediction to original label
@@ -96,3 +103,23 @@ class Online_RandomForest():
         self.model.partial_fit(feature_data, prediction)
 
         return label
+    
+    def save_model(self, path):
+        fpath = f"{path}/{self.name}"
+        mpath = f"{fpath}/{self.id}.pkl"
+        # Create the directory if it does not exist
+        if not os.path.exists(fpath):
+            os.makedirs(fpath)
+        # Save the model, scaler, and label encoder to a pickle file
+        pick={'model':self.model,'scaler':self.scaler,'label_encoder':self.label_encoder}
+        with open(mpath, 'wb') as f:
+            pickle.dump(pick, f)
+
+    def load_model(self, path):
+        # Load the model, scaler, and label encoder from a pickle file
+        with open(path, 'rb') as f:
+            pick = pickle.load(f)
+            self.model = pick['model']
+            self.scaler = pick['scaler']
+            self.label_encoder = pick['label_encoder']
+            self.is_initialized = True
