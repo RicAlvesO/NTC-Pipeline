@@ -18,6 +18,7 @@ page_size = 10000
 preprocessor = PcapPreprocessor()
 evaluator = Evaluator()
 
+# adicionar função de ir buscar os modelos ao mlflow
 model_list=[]
 
 for model_file in os.listdir('data/models/Offline1'):

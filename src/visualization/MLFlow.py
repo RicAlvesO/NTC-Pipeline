@@ -49,11 +49,12 @@ class MLFlowLogger:
         mlflow.set_tracking_uri(self.tracking_uri)
         mlflow.set_experiment(self.experiment_name)
 
+
     def log_run(
         self,
         model: BaseEstimator,
         X_train: pd.DataFrame,
-        y_train_pred: pd.DataFrame,
+        signature: pd.DataFrame,
         results: pd.DataFrame,
         tag: str,
         registered_model_name: str,
@@ -84,10 +85,6 @@ class MLFlowLogger:
             print("Setting tags...")
             mlflow.set_tag("Training Info", tag)
 
-            # Infer the model signature
-            print("Inferring model signature...")
-            signature = infer_signature(X_train, y_train_pred)
-
             # Log the model
             print("Logging the model...")
             mlflow.sklearn.log_model(
@@ -97,3 +94,32 @@ class MLFlowLogger:
                 input_example=X_train,
                 registered_model_name=registered_model_name,
             )
+
+
+    def get_model_uri(self, model_name: str, model_version: int):
+        """
+        Gets the model URI.
+
+        Args:
+            model_name (str): The name of the model.
+            model_version (int): The version of the model.
+
+        Returns:
+            str: The model URI.
+        """
+        return f"models:/{model_name}/{model_version}"
+    
+
+    def reuse_model(self, model_name: str, model_version: int):
+        """
+        Reuses a model from MLflow.
+
+        Args:
+            model_name (str): The name of the model.
+            model_version (int): The version of the model.
+
+        Returns:
+            BaseEstimator: The loaded model.
+        """
+        model_uri = self.get_model_uri(model_name, model_version)
+        return mlflow.sklearn.load_model(model_uri=model_uri)

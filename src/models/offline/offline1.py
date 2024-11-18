@@ -54,7 +54,7 @@ class Offline_RandomForest():
             # Train the model
             self.model.fit(X, y)
 
-            return True
+            return X
         except Exception as e:
             print(f"Training failed: {e}")
             return False

@@ -135,3 +135,37 @@ class PcapPreprocessor():
         }
 
         return result
+    
+    def change_colluns_dataset(self,base_data):
+
+        # Iterate over each column in the DataFrame
+        for column in base_data.columns:
+            # Get unique values after dropping NaN
+            unique_values = base_data[column].dropna().unique()
+            # Check if unique values are exactly [0.0, 1.0]
+            if set(unique_values) == {0.0, 1.0}:
+                # Convert the column to boolean
+                base_data[column] = base_data[column].astype(bool)
+
+        return base_data
+    
+
+    def clean_data(self, base_data):
+        # Drop columns with only NaN values
+        base_data = base_data.dropna(axis=1, how="all")
+
+        # Drop columns with only one unique value
+        base_data = base_data.loc[:, base_data.nunique() > 1]
+
+        return base_data
+    
+
+    def preprocess_dataframe(self, base_data):
+        
+        # Change the columns to the correct data types
+        base_data = self.change_colluns_dataset(base_data)
+
+        # Clean the data
+        base_data = self.clean_data(base_data)
+
+        return base_data

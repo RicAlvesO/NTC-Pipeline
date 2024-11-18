@@ -165,6 +165,18 @@ class Visualization():
 
         return base_data_cleaned
     
+    def get_non_null_values_column_x(self, base_data, x):
+        return base_data[x][base_data[x].notnull()]
+
+    def get_unique_values_column_x(self, base_data, x):
+        return base_data[x].dropna().unique()
+    
+    def get_single_value_features(self, base_data):
+        return [col for col in base_data.columns if base_data[col].nunique() == 1]
+    
+    def get_double_value_features(self, base_data):
+        return [col for col in base_data.columns if base_data[col].nunique() == 2]
+
 
     def calculate_missing_percentages(self, base_data):
         return base_data.isnull().mean()
@@ -193,6 +205,19 @@ class Visualization():
     def filter_valid_columns(self, base_data, missing_percentage, threshold):
         valid_columns = missing_percentage[missing_percentage < threshold].index
         return base_data[valid_columns]
+    
+    
+    def print_non_null_values_high_missing(self, base_data, threshold):
+        # Step 1: Calculate missing percentages
+        missing_percentages = self.calculate_missing_percentages(base_data)
+
+        # Step 2: Identify columns with high missing values
+        high_missing_columns = missing_percentages[missing_percentages > threshold].index.tolist()
+
+        # Step 3: Print non-null values from those columns
+        for column in high_missing_columns:
+            unique_values = self.get_unique_values_column_x(base_data, column)
+            print(f"Unique non-null values in '{column}': {unique_values.tolist()}")
     
 
     def get_types(self, base_data):
@@ -343,15 +368,3 @@ class Visualization():
             print("No rows found")
         else:
             return(non_null_tcp_port[(non_null_tcp_port['matches_srcport'] == False) & (non_null_tcp_port['matches_dstport'] == False)])
-    
-
-    def plot_size_distribution(self, base_data):
-        # Ensure that 'size' column is not null and is numeric
-        non_null_size = base_data['size'].dropna()  # Remove NaN values
-
-        plt.figure(figsize=(10, 6))
-        sns.histplot(non_null_size, kde=True, bins=30, color='skyblue', edgecolor='black')
-        plt.title('Distribution of Size', fontsize=16)
-        plt.xlabel('Size', fontsize=14)
-        plt.ylabel('Frequency', fontsize=14)
-        plt.show()

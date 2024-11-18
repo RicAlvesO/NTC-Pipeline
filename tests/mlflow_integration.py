@@ -8,8 +8,7 @@ import sys
 sys.path.append('..')
 from src.preprocessors.pcap_preprocessor import PcapPreprocessor
 from src.models.offline.offline1 import Offline_RandomForest
-from src.models.online.online1 import Online_RandomForest
-from src.evaluators.test_evaluator import Evaluator
+from src.evaluators.standard_evaluator import Evaluator
 from src.visualization.MLFlow import MLFlowLogger
 
 nest_asyncio.apply()
@@ -27,7 +26,7 @@ training_data,online_training_data = preprocessor.get_training_data(base_trainin
 # Train the offleine model
 model = Offline_RandomForest()
 
-X_train = model.train(training_data)
+X = model.train(training_data)
 
 validation_data = preprocessor.get_validation_data(validation_percentage,seed=run_seed)
 
@@ -57,13 +56,16 @@ results = evaluator.evaluate(df)
 
 
 # HERE STARTS CODE MLFLOW
+# Infer the model signature
+print("Inferring model signature...")
+signature = infer_signature(X, model.predict(X))
 
 # Log results to MLflow
 logger = MLFlowLogger(tracking_uri="http://127.0.0.1:8080", experiment_name="MLflow Test")
 logger.log_run(
     model=model,
-    X_train=X_train,
-    y_train_pred=model.predict(X_train),
+    X_train= X,
+    signature=signature,
     results=results,
     tag="Basic Offline RandomForest",
     registered_model_name="tracking-test",
