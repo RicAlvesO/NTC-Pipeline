@@ -83,8 +83,10 @@ class Offline_RandomForest():
         # Scale the single data point
         if isinstance(data, pd.DataFrame):
             input_data = data
+        elif isinstance(data, (list, tuple)):  # Handle list or tuple input
+            input_data = pd.DataFrame([data]) if not isinstance(data[0], (list, tuple)) else pd.DataFrame(data)
         else:
-            input_data = pd.DataFrame(data) if data.ndim == 2 else pd.DataFrame([data])
+            raise ValueError("Unsupported data format. Must be a DataFrame, list, or tuple.")
         feature_data, _ = self.prepare_data(input_data, training=False)
         prediction = self.model.predict(feature_data)
         

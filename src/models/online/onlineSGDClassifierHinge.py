@@ -68,10 +68,22 @@ class Online_SGDClassifierHinge():
         return data["label"]
     
     def predict(self, data):
-        input_data = pd.DataFrame(data) if isinstance(data, dict) else pd.DataFrame([data])
-        X, _ = self.prepare_data(input_data, training=False)
-        prediction = self.model.predict(X)
-        return self.label_encoder.inverse_transform(prediction)[0]
+        if self.model is None:
+            raise ValueError("The model is not trained.")
+
+        # Scale the single data point
+        if isinstance(data, pd.DataFrame):
+            input_data = data
+        else:
+            input_data = pd.DataFrame(data) if data.ndim == 2 else pd.DataFrame([data])
+        feature_data, _ = self.prepare_data(input_data, training=False)
+        prediction = self.model.predict(feature_data)
+        
+        # Map prediction to original label
+        label = self.label_encoder.inverse_transform(prediction)[0]
+        self.model.partial_fit(feature_data, prediction)
+
+        return label
 
     def save_model(self, path):
         fpath = f"{path}/{self.name}"

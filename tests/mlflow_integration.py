@@ -7,9 +7,19 @@ import time
 import sys
 sys.path.append('..')
 from src.preprocessors.pcap_preprocessor import PcapPreprocessor
-from src.models.offline.offline1 import Offline_RandomForest
 from src.evaluators.standard_evaluator import Evaluator
 from src.visualization.MLFlow import MLFlowLogger
+
+from src.models.offline.offlineRandomForest import Offline_RandomForest
+from src.models.offline.offlineDecisionTree import Offline_DecisionTree
+from src.models.offline.offlineSVM import Offline_SVM
+from src.models.online.onlineSGDClassifierHinge import Online_SGDClassifierHinge
+from src.models.online.onlineSGDClassifierLogLoss import Online_SGDClassifierLogLoss
+from src.models.online.onlineBaggingClassifier import Online_BaggingClassifier
+
+
+# model_list = [Offline_RandomForest(), Offline_DecisionTree(), Offline_SVM(), Online_SGDClassifierHinge(), Online_SGDClassifierLogLoss(), Online_BaggingClassifier()]
+
 
 nest_asyncio.apply()
 run_seed=int(time.time())
@@ -21,18 +31,27 @@ evaluator = Evaluator()
 
 
 # Train a model and prepare metadata for logging
+print("Preparing training data...")
 training_data,online_training_data = preprocessor.get_training_data(base_training_percentage, online_training_percentage, True, seed=run_seed)
 
-# Train the offleine model
-model = Offline_RandomForest()
+# Train the model
+model = Online_SGDClassifierHinge()
 
+print("Training offline model...")
 X = model.train(training_data)
 
+if model.is_online():
+    print("Training online model " + model.get_name())
+    for index, row in online_training_data.iterrows():
+        model.predict(row)
+
+print("Preparing validation data...")
 validation_data = preprocessor.get_validation_data(validation_percentage,seed=run_seed)
 
 
 # Get the predictions from all models into a dataframe.
 
+print("Model evaluation...")
 header = ['expected']
 header.append(model.id)
 validation_results = [header]
@@ -55,7 +74,7 @@ results = evaluator.evaluate(df)
 
 
 
-# HERE STARTS CODE MLFLOW
+# HERE STARTS MLFLOW CODE 
 # Infer the model signature
 print("Inferring model signature...")
 signature = infer_signature(X, model.predict(X))
@@ -67,10 +86,6 @@ logger.log_run(
     X_train= X,
     signature=signature,
     results=results,
-    tag="Basic Offline RandomForest",
-    registered_model_name="tracking-test",
+    tag="Basic Model",
+    registered_model_name=model.get_name(),
 )
-
-
-
-# falta disconnect da bd

@@ -79,7 +79,7 @@ class MLFlowLogger:
                 mlflow.log_metric(f"{model_name}_precision", row['precision'])
                 mlflow.log_metric(f"{model_name}_recall", row['recall'])
                 mlflow.log_metric(f"{model_name}_f1_score", row['f1_score'])
-                mlflow.log_metric(f"{model_name}_roc_auc", row['roc_auc'])
+                # mlflow.log_metric(f"{model_name}_roc_auc", row['roc_auc'])
 
             # Set tag
             print("Setting tags...")
