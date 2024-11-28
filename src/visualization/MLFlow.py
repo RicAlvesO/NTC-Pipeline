@@ -75,10 +75,10 @@ class MLFlowLogger:
             print("Logging metrics...")
             for _, row in results.iterrows():
                 model_name = row['model']
-                mlflow.log_metric(f"{model_name}_accuracy", row['accuracy'])
-                mlflow.log_metric(f"{model_name}_precision", row['precision'])
-                mlflow.log_metric(f"{model_name}_recall", row['recall'])
-                mlflow.log_metric(f"{model_name}_f1_score", row['f1_score'])
+                mlflow.log_metric("accuracy", row['accuracy'])
+                mlflow.log_metric("precision", row['precision'])
+                mlflow.log_metric("recall", row['recall'])
+                mlflow.log_metric("f1_score", row['f1_score'])
                 # mlflow.log_metric(f"{model_name}_roc_auc", row['roc_auc'])
 
             # Set tag

@@ -65,7 +65,7 @@ class Online_BaggingClassifier():
                 self.model.learn_one(row, label)
             
             self.is_initialized = True
-            return True
+            return X
         except Exception as e:
             print(f"Training failed: {e}")
             return False
@@ -83,11 +83,34 @@ class Online_BaggingClassifier():
         return data["label"]
     
     def predict(self, data):
-        input_data = pd.DataFrame(data) if isinstance(data, dict) else pd.DataFrame([data])
+        # Ensure input is either a dictionary or a DataFrame
+        if isinstance(data, dict):
+            input_data = pd.DataFrame([data])
+        elif isinstance(data, pd.Series):
+            input_data = pd.DataFrame([data.to_dict()])
+        else:
+            input_data = data  # Already a DataFrame
+
+        # Prepare the data (scaling and feature selection)
         X, _ = self.prepare_data(input_data, training=False)
-        row = X.iloc[0].to_dict()
-        prediction = self.model.predict_one(row)
-        return self.label_encoder.inverse_transform([prediction])[0]
+
+        # For single-row input, predict for the first row
+        if len(X) == 1:
+            row = X.iloc[0].to_dict()
+            prediction = self.model.predict_one(row)
+            return self.label_encoder.inverse_transform([prediction])[0]
+
+        # For multi-row input, predict for each row
+        predictions = []
+        for i in range(len(X)):
+            row = X.iloc[i].to_dict()
+            pred = self.model.predict_one(row)
+            predictions.append(pred)
+
+        # Return all predictions as decoded labels
+        return self.label_encoder.inverse_transform(predictions)
+
+
 
     def save_model(self, path):
         fpath = f"{path}/{self.name}"

@@ -1,11 +1,13 @@
 import time
 import sys
 import os
+import pandas as pd
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 # Prepocessores
 from src.preprocessors.pcap_preprocessor import PcapPreprocessor
+from src.evaluators.standard_evaluator import Evaluator
 
 # Models 
 from src.models.offline.offlineRandomForest import Offline_RandomForest
@@ -21,6 +23,7 @@ total_time = 0
 model_list = [Offline_RandomForest(), Offline_DecisionTree(), Offline_SVM(), Online_SGDClassifierHinge(), Online_SGDClassifierLogLoss(), Online_BaggingClassifier()]
 total_model_time = [0] * len(model_list)
 dataset_files = []
+validation_percentage = 20
 
 for file in os.listdir('data/pcap/normal'):
     dataset_files.append(('data/pcap/normal/' + file, 'normal'))
@@ -55,7 +58,7 @@ print(f"Getting training data took {delta} seconds")
 # Train the models
 for i,model in enumerate(model_list):
     t_train_start = time.time()
-    model.train(training_data, online_training_data)
+    model.train(training_data)
     t_train_end = time.time()
     delta = t_train_end - t_train_start
     total_time += delta
@@ -78,7 +81,7 @@ t_vd_start = time.time()
 evaluator = Evaluator()
 validation_data = preprocessor.get_validation_data(validation_percentage,seed=run_seed)
 t_vd_end = time.time()
-delta += t_vd_end - t_vd_start
+delta = t_vd_end - t_vd_start
 total_time += delta
 for i in range(len(total_model_time)):
     total_model_time[i] += delta
@@ -109,9 +112,11 @@ for i in range(len(labels)):
     validation_results.append(row)
 df = pd.DataFrame(validation_results)
 
+
 t_eval_start = time.time()
-evaluator.evaluate(df)
+results = evaluator.evaluate(df)
 t_eval_end = time.time()
+print(results)
 delta = t_eval_end - t_eval_start
 total_time += delta
 for i in range(len(total_model_time)):
