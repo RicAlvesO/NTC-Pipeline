@@ -6,10 +6,8 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from src.preprocessors.pcap_preprocessor import PcapPreprocessor
-from src.models.offline.offline1 import Offline_RandomForest
-from src.models.online.online1 import Online_RandomForest
 from src.evaluators.standard_evaluator import Evaluator
-
+from src.visualization.MLFlow import MLFlowLogger
 
 run_seed=int(time.time())
 validation_percentage = 20
@@ -19,19 +17,19 @@ preprocessor = PcapPreprocessor()
 evaluator = Evaluator()
 
 # adicionar função de ir buscar os modelos ao mlflow
-model_list=[]
+model_name=["OfflineRF", "OfflineDT", "OfflineSVM", "OnlineSGDHinge", "OnlineSGDLogLoss", "OnlineBagging"]
+model_list = []
 
-for model_file in os.listdir('data/models/Offline1'):
-    model = Offline_RandomForest()
-    model.load_model(f"data/models/Offline1/{model_file}")
-    model.id = model_file.split('.')[0]
-    model_list.append(model)
 
-for model_file in os.listdir('data/models/Online1'):
-    model = Online_RandomForest()
-    model.load_model(f"data/models/Online1/{model_file}")
-    model.id = model_file.split('.')[0]
-    model_list.append(model)
+logger = MLFlowLogger(tracking_uri="http://127.0.0.1:8080", experiment_name="MLflow Test")
+model_version = 1
+i = 0
+
+for model in model_name:
+    # Load the model
+    print("Loading model" + model)
+    model_list.append(logger.reuse_model(model, model_version))
+    i+=1
 
 
 # Header
@@ -43,7 +41,7 @@ validation_results = [header]
 i=0
 while True:
     print(f"Validation iteration {i}")
-    validation_data = preprocessor.get_validation_data(validation_percentage, seed=run_seed, page_size=page_size, page_number=i)
+    validation_data = preprocessor.get_validation_data(validation_percentage, seed=run_seed, page_size=page_size, page_number=i, dataset="data/pcap/anomaly/injection_normal1.pcap")
     if validation_data is None:
         break
     print(f"Validation data size: {len(validation_data)}")
